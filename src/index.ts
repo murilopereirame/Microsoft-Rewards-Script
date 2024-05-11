@@ -14,6 +14,8 @@ import { Workers } from './functions/Workers'
 import Activities from './functions/Activities'
 
 import { Account } from './interface/Account'
+import { exec } from "child_process";
+import { promisify } from "util";
 
 // Main bot class
 export class MicrosoftRewardsBot {
@@ -30,6 +32,7 @@ export class MicrosoftRewardsBot {
 
     private collectedPoints: number = 0
     private activeWorkers: number
+    private earnablePoints: number = 0;
     private browserFactory: Browser = new Browser(this)
     private accounts: Account[]
     private workers: Workers
@@ -147,6 +150,7 @@ export class MicrosoftRewardsBot {
 
         const earnablePoints = browserEnarablePoints + appEarnablePoints
         this.collectedPoints = earnablePoints
+        this.earnablePoints = earnablePoints;
         log('MAIN-POINTS', `You can earn ${earnablePoints} points today (Browser: ${browserEnarablePoints} points, App: ${appEarnablePoints} points)`)
 
         // If runOnZeroPoints is false and 0 points to earn, don't continue
@@ -221,7 +225,7 @@ export class MicrosoftRewardsBot {
             // Open a new tab to where the tasks are going to be completed
             const workerPage = await browser.newPage()
 
-            // Go to homepage on worker page
+                // Go to homepage on worker page
             await this.browser.func.goHome(workerPage)
 
             // Do mobile searches
@@ -267,6 +271,17 @@ export class MicrosoftRewardsBot {
         await browser.close()
     }
 
+  private async runPostAction(email: string) {
+    if (this.config.postActions) {
+      const runner = promisify(exec);
+      runner(
+        this.config.postActions
+          .replace("{collected}", this.collectedPoints.toString())
+          .replace("{earnablePoints}", this.earnablePoints.toString())
+          .replace("{email}", email)
+      );
+    }
+  }
 }
 
 

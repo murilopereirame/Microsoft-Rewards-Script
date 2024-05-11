@@ -9,6 +9,7 @@ export interface Config {
     searchSettings: SearchSettings;
     webhook: Webhook;
     saveFingerprint: boolean;
+    postActions: string;
 }
 
 export interface SearchSettings {
