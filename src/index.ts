@@ -17,7 +17,7 @@ import { Account } from './interface/Account'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import Axios from './util/Axios'
-
+import cron from 'node-cron'
 
 // Main bot class
 export class MicrosoftRewardsBot {
@@ -365,8 +365,10 @@ async function main() {
     }
 }
 
-// Start the bots
-main().catch(error => {
-    log('main', 'MAIN-ERROR', `Error running bots: ${error}`, 'error')
-    process.exit(1)
-})
+if (process.env.BOT_CRON) {
+    cron.schedule(process.env.BOT_CRON, () => {
+        main().catch(error => {
+            log('main', 'MAIN-ERROR', `Error running bots: ${error}`, 'error')
+        })
+    });
+}

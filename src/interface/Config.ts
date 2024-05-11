@@ -23,6 +23,7 @@ export interface ConfigSaveFingerprint {
     postSuccess: string;
     postFail: string;
     maxLoginRetries: number;
+    logFile: string;
 }
 
 export interface ConfigSearchSettings {
