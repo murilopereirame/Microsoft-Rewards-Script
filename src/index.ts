@@ -103,7 +103,6 @@ export class MicrosoftRewardsBot {
           "All workers destroyed. Exiting main process!",
           "warn"
         );
-        process.exit(0);
       }
     });
   }
@@ -137,7 +136,6 @@ export class MicrosoftRewardsBot {
 
     log("MAIN-PRIMARY", "Completed tasks for ALL accounts");
     log("MAIN-PRIMARY", "All workers destroyed!");
-    process.exit(0);
   }
 
   // Desktop
