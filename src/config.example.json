@@ -27,5 +27,7 @@
         "enabled": false,
         "url": ""
     },
-    "postAction": ""
+    "postSuccess": "",
+    "postFail": "",
+    "maxLoginRetries": 3
 }
