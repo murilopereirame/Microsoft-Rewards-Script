@@ -13,6 +13,7 @@ export interface Config {
     postFail: string;
     maxLoginRetries: number;
     logFile: string;
+    cronExpr: string;
 }
 
 export interface SearchSettings {

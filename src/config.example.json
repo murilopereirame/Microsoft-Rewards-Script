@@ -32,5 +32,6 @@
     "postSuccess": "",
     "postFail": "",
     "maxLoginRetries": 3,
-    "logFile": ""
+    "logFile": "",
+    "cronExpr": ""
 }
