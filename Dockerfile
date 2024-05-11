@@ -1,11 +1,13 @@
-# Use an official Node.js runtime as a base image
-FROM node:18
+FROM node:18 as build
 
-# Set the working directory in the container
-WORKDIR /usr/src/microsoft-rewards-script
+WORKDIR /microsoft-rewards-script
+
+RUN apt-get update && apt-get install -y git
+
+RUN git clone https://github.com/murilopereirame/Microsoft-Rewards-Script.git .
 
 # Install necessary dependencies for Playwright and cron
-RUN apt-get update && apt-get install -y \
+RUN apt-get install -y \
     jq \
     cron \
     gettext-base \
@@ -20,27 +22,27 @@ RUN apt-get update && apt-get install -y \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy all files to the working directory
-COPY . .
-
 # Install dependencies, set permissions, and build the script
 RUN npm install && \
-    chmod -R 755 /usr/src/microsoft-rewards-script/node_modules && \
+    chmod -R 755 /microsoft-rewards-script/node_modules && \
     npm run pre-build && \
     npm run build
 
-# Copy cron file to cron directory
-COPY src/crontab.template /etc/cron.d/microsoft-rewards-cron.template
+RUN npm prune --production
 
-# Create the log file to be able to run tail
-RUN touch /var/log/cron.log
+RUN mkdir production && cp -a dist node_modules package.json "./production"
 
-# Define the command to run your application with cron optionally
-CMD ["sh", "-c", "echo \"$TZ\" > /etc/timezone && \
-    dpkg-reconfigure -f noninteractive tzdata && \
-    envsubst < /etc/cron.d/microsoft-rewards-cron.template > /etc/cron.d/microsoft-rewards-cron && \
-    chmod 0644 /etc/cron.d/microsoft-rewards-cron && \
-    crontab /etc/cron.d/microsoft-rewards-cron && \
-    cron -f & \
-    ([ \"$RUN_ON_START\" = \"true\" ] && npm start) && \
-    tail -f /var/log/cron.log"]
+FROM node:lts-alpine
+
+WORKDIR /usr/src/microsoft-rewards-script
+
+COPY --from=build /microsoft-rewards-script/production /usr/src/microsoft-rewards-script
+
+# Install playwright chromium
+RUN npx playwright install chromium
+
+RUN ln -s /config/config.json ./dist/config.json
+RUN ln -s /config/accounts.json ./dist/accounts.json
+
+# Define the command to run your application
+CMD ["node", "dist/index.js"]

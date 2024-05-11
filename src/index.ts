@@ -14,6 +14,8 @@ import { Workers } from './functions/Workers'
 import Activities from './functions/Activities'
 
 import { Account } from './interface/Account'
+import { exec } from "child_process";
+import { promisify } from "util";
 import Axios from './util/Axios'
 
 
@@ -34,6 +36,7 @@ export class MicrosoftRewardsBot {
     private pointsInitial: number = 0
 
     private activeWorkers: number
+    private earnablePoints: number = 0;
     private mobileRetryAttempts: number
     private browserFactory: Browser = new Browser(this)
     private accounts: Account[]
@@ -161,6 +164,10 @@ export class MicrosoftRewardsBot {
 
         const browserEnarablePoints = await this.browser.func.getBrowserEarnablePoints()
 
+        const earnablePoints = browserEnarablePoints + appEarnablePoints
+        this.collectedPoints = earnablePoints
+        this.earnablePoints = earnablePoints;
+        log('MAIN-POINTS', `You can earn ${earnablePoints} points today (Browser: ${browserEnarablePoints} points, App: ${appEarnablePoints} points)`)
         // Tally all the desktop points
         this.pointsCanCollect = browserEnarablePoints.dailySetPoints +
             browserEnarablePoints.desktopSearchPoints
@@ -310,6 +317,18 @@ async function main() {
     } catch (error) {
         log(false, 'MAIN-ERROR', `Error running desktop bot: ${error}`, 'error')
     }
+
+  private async runPostAction(email: string) {
+    if (this.config.postActions) {
+      const runner = promisify(exec);
+      runner(
+        this.config.postActions
+          .replace("{collected}", this.collectedPoints.toString())
+          .replace("{earnablePoints}", this.earnablePoints.toString())
+          .replace("{email}", email)
+      );
+    }
+  }
 }
 
 // Start the bots

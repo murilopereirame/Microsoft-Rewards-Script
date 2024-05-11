@@ -19,6 +19,8 @@ export interface Config {
 export interface ConfigSaveFingerprint {
     mobile: boolean;
     desktop: boolean;
+    saveFingerprint: boolean;
+    postActions: string;
 }
 
 export interface ConfigSearchSettings {

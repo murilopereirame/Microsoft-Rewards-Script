@@ -43,5 +43,6 @@
     "webhook": {
         "enabled": false,
         "url": ""
-    }
+    },
+    "postAction": ""
 }
