@@ -17,6 +17,7 @@ import {Account} from './interface/Account'
 import {exec} from 'child_process'
 import {promisify} from 'util'
 import cron from 'node-cron'
+import { Config } from './interface/Config'
 
 // Main bot class
 export class MicrosoftRewardsBot {
@@ -40,8 +41,8 @@ export class MicrosoftRewardsBot {
     private login = new Login(this)
     private accessToken: string = ''
 
-    constructor() {
-        this.log = log
+  constructor(config: Config) {
+    this.log = log
 
         this.accounts = []
         this.utils = new Util()
@@ -50,7 +51,7 @@ export class MicrosoftRewardsBot {
             func: new BrowserFunc(this),
             utils: new BrowserUtil(this)
         }
-        this.config = loadConfig()
+        this.config = config
         this.activeWorkers = this.config.clusters
     }
 
@@ -316,12 +317,20 @@ export class MicrosoftRewardsBot {
     }
 }
 
-if (process.env.BOT_CRON) {
-  cron.schedule(process.env.BOT_CRON, () => {
-    const bot = new MicrosoftRewardsBot();
-    // Initialize accounts first and then start the bot
-    bot.initialize().then(() => {
-      bot.run();
-    });
-  });
+const runBot = (config: Config) => {
+  const bot = new MicrosoftRewardsBot(config)
+  // Initialize accounts first and then start the bot
+  bot.initialize().then(() => {
+    bot.run()
+  })
+}
+
+const config = loadConfig()
+
+if (config.cronExpr) {
+  cron.schedule(config.cronExpr, () => {
+    runBot(config)
+  })
+} else {
+  runBot(config)
 }
