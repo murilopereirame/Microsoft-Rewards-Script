@@ -1,4 +1,4 @@
-FROM node:lts-alpine as build
+FROM node:lts
 
 WORKDIR /microsoft-rewards-script
 
@@ -7,28 +7,21 @@ RUN apk add --update --no-cache git
 RUN git clone https://github.com/murilopereirame/Microsoft-Rewards-Script.git .
 
 # Install dependencies including Playwright
-RUN apk add --update --no-cache \
+RUN apt-get install -y \
     xvfb \
-    mesa-gbm \
-    nss \
-    alsa-lib \
-    libxscrnsaver \
-    libatk-bridge-2.0 \
-    gtk+3.0
+    libgbm-dev \
+    libnss3 \
+    libasound2 \
+    libxss1 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN npm install
 
 RUN npm run build
 
 RUN npm prune --production
-
-RUN mkdir production && cp -a dist node_modules package.json "./production"
-
-FROM node:lts-alpine
-
-WORKDIR /usr/src/microsoft-rewards-script
-
-COPY --from=build /microsoft-rewards-script/production /usr/src/microsoft-rewards-script
 
 # Install playwright chromium
 RUN npx playwright install chromium
