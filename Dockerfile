@@ -1,50 +1,40 @@
-# Use an official Node.js runtime as a base image
-FROM node:18
+FROM node:lts-alpine as build
 
-# Set the working directory in the container
-WORKDIR /usr/src/microsoft-rewards-script
+WORKDIR /microsoft-rewards-script
 
-# Install jq, cron, gettext-base, Playwright dependencies
-RUN apt-get update && apt-get install -y \
-    jq \
-    cron \
-    gettext-base \
+RUN apk add --update --no-cache git
+
+RUN git clone https://github.com/murilopereirame/Microsoft-Rewards-Script.git .
+
+# Install dependencies including Playwright
+RUN apk add --update --no-cache \
     xvfb \
-    libgbm-dev \
-    libnss3 \
-    libasound2 \
-    libxss1 \
-    libatk-bridge2.0-0 \
-    libgtk-3-0 \
-    tzdata \
-    && rm -rf /var/lib/apt/lists/*
+    mesa-gbm \
+    nss \
+    alsa-lib \
+    libxscrnsaver \
+    libatk-bridge-2.0 \
+    gtk+3.0
 
-# Copy all files to the working directory
-COPY . .
+RUN npm install
 
-# Install application dependencies
-RUN npm install && \
-    # Ensure correct permissions for node_modules
-    chmod -R 755 /usr/src/microsoft-rewards-script/node_modules && \
-    # Install Playwright Chromium directly from local node_modules
-    ./node_modules/.bin/playwright install chromium && \
-    # Ensure correct permissions for the working directory
-    chmod -R 755 /usr/src/microsoft-rewards-script
-
-# Build the script
 RUN npm run build
 
-# Copy cron file to cron directory
-COPY src/crontab.template /etc/cron.d/microsoft-rewards-cron.template
+RUN npm prune --production
 
-# Create the log file to be able to run tail
-RUN touch /var/log/cron.log
+RUN mkdir production && cp -a dist node_modules package.json "./production"
 
-# Define the command to run your application with cron optionally
-CMD ["sh", "-c", "node src/updateConfig.js && \
-    echo \"$TZ\" > /etc/timezone && \
-    dpkg-reconfigure -f noninteractive tzdata && \
-    if [ \"$RUN_ON_START\" = \"true\" ]; then npm start; fi && \
-    envsubst < /etc/cron.d/microsoft-rewards-cron.template > /etc/cron.d/microsoft-rewards-cron && \
-    crontab /etc/cron.d/microsoft-rewards-cron && \
-    cron && tail -f /var/log/cron.log"]
+FROM node:lts-alpine
+
+WORKDIR /usr/src/microsoft-rewards-script
+
+COPY --from=build /microsoft-rewards-script/production /usr/src/microsoft-rewards-script
+
+# Install playwright chromium
+RUN npx playwright install chromium
+
+RUN ln -s /config/config.json ./dist/config.json
+RUN ln -s /config/accounts.json ./dist/accounts.json
+
+# Define the command to run your application
+CMD ["node", "dist/index.js"]
