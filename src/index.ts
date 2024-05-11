@@ -1,21 +1,21 @@
 import cluster from 'cluster'
-import { BrowserContext, Page } from 'playwright'
+import {BrowserContext, Page} from 'playwright'
 
 import Browser from './browser/Browser'
 import BrowserFunc from './browser/BrowserFunc'
 import BrowserUtil from './browser/BrowserUtil'
 
-import { log } from './util/Logger'
+import {log} from './util/Logger'
 import Util from './util/Utils'
-import { loadAccounts, loadConfig, saveSessionData } from './util/Load'
+import {loadAccounts, loadConfig, saveSessionData} from './util/Load'
 
-import { Login } from './functions/Login'
-import { Workers } from './functions/Workers'
+import {Login} from './functions/Login'
+import {Workers} from './functions/Workers'
 import Activities from './functions/Activities'
 
-import { Account } from './interface/Account'
-import { exec } from "child_process";
-import { promisify } from "util";
+import {Account} from './interface/Account'
+import {exec} from 'child_process'
+import {promisify} from 'util'
 
 // Main bot class
 export class MicrosoftRewardsBot {
@@ -32,7 +32,7 @@ export class MicrosoftRewardsBot {
 
     private collectedPoints: number = 0
     private activeWorkers: number
-    private earnablePoints: number = 0;
+    private earnablePoints: number = 0
     private browserFactory: Browser = new Browser(this)
     private accounts: Account[]
     private workers: Workers
@@ -80,7 +80,7 @@ export class MicrosoftRewardsBot {
         for (let i = 0; i < accountChunks.length; i++) {
             const worker = cluster.fork()
             const chunk = accountChunks[i]
-            worker.send({ chunk })
+            worker.send({chunk})
         }
 
         cluster.on('exit', (worker, code) => {
@@ -99,7 +99,7 @@ export class MicrosoftRewardsBot {
     private runWorker() {
         log('MAIN-WORKER', `Worker ${process.pid} spawned`)
         // Receive the chunk of accounts from the master
-        process.on('message', async ({ chunk }) => {
+        process.on('message', async ({chunk}) => {
             await this.runTasks(chunk)
         })
     }
@@ -120,6 +120,7 @@ export class MicrosoftRewardsBot {
             await this.Mobile(account)
 
             log('MAIN-WORKER', `Completed tasks for account ${account.email}`)
+            await this.runPostSuccess(account.email)
         }
 
         log('MAIN-PRIMARY', 'Completed tasks for ALL accounts')
@@ -137,8 +138,21 @@ export class MicrosoftRewardsBot {
         log('MAIN', 'Starting DESKTOP browser')
 
         // Login into MS Rewards, then go to rewards homepage
-        await this.login.login(this.homePage, account.email, account.password)
+        let login = await this.login.login(this.homePage, account.email, account.password)
         this.accessToken = await this.login.getMobileAccessToken(this.homePage, account.email)
+
+        let loginRetries = 0
+
+        while (!login.status && loginRetries < this.config.maxLoginRetries) {
+            login = await this.login.login(this.homePage, account.email, account.password)
+            loginRetries++
+        }
+
+        if (!login.status) {
+            const message = login.reason === 'GENERIC' ? 'Login failed with generic error' : 'Account locked'
+            await this.runPostFail(account.email, message)
+            return await this.closeBrowser(browser, account.email)
+        }
 
         await this.browser.func.goHome(this.homePage)
 
@@ -150,7 +164,7 @@ export class MicrosoftRewardsBot {
 
         const earnablePoints = browserEnarablePoints + appEarnablePoints
         this.collectedPoints = earnablePoints
-        this.earnablePoints = earnablePoints;
+        this.earnablePoints = earnablePoints
         log('MAIN-POINTS', `You can earn ${earnablePoints} points today (Browser: ${browserEnarablePoints} points, App: ${appEarnablePoints} points)`)
 
         // If runOnZeroPoints is false and 0 points to earn, don't continue
@@ -225,7 +239,7 @@ export class MicrosoftRewardsBot {
             // Open a new tab to where the tasks are going to be completed
             const workerPage = await browser.newPage()
 
-                // Go to homepage on worker page
+            // Go to homepage on worker page
             await this.browser.func.goHome(workerPage)
 
             // Do mobile searches
@@ -271,20 +285,34 @@ export class MicrosoftRewardsBot {
         await browser.close()
     }
 
-  private async runPostAction(email: string) {
-    log("MAIN-WORKER", `Running post action for ${email}`);
-    if (this.config.postActions) {
-      const runner = promisify(exec);
-      runner(
-        this.config.postActions
-          .replace("{collected}", this.collectedPoints.toString())
-          .replace("{earnablePoints}", this.earnablePoints.toString())
-          .replace("{email}", email)
-      );
-      return log("MAIN-WORKER", `Post action runned for ${email}`);
+    private async runPostSuccess(email: string) {
+        log('POST-SUCCESS', `Running success post action for ${email}`)
+        if (this.config.postSuccess) {
+            const runner = promisify(exec)
+            const {stdout} = await runner(
+                this.config.postSuccess
+                    .replace('{collected}', this.collectedPoints.toString())
+                    .replace('{earnablePoints}', this.earnablePoints.toString())
+                    .replace('{email}', email)
+            )
+            log('POST-SUCCESS', `Post success action runned for ${email}`)
+            return log('POST-SUCCESS', `STDOUT ${stdout}`)
+        }
+        return log('POST-SUCCESS', `Post success action failed for ${email}`)
     }
-    return log("MAIN-WORKER", `Post action failed for ${email}`);
-  }
+
+    private async runPostFail(email: string, error: string) {
+        log('POST-FAIL', `Running fail post action for ${email}`)
+        if (this.config.postFail) {
+            const runner = promisify(exec)
+            const {stdout} = await runner(
+                this.config.postFail.replace('{error}', error).replace('{email}', email)
+            )
+            log('POST-FAIL', `Post fail action runned for ${email}`)
+            return log('POST-FAIL', `STDOUT ${stdout}`)
+        }
+        return log('POST-FAIL', `Post fail action failed for ${email}`)
+    }
 }
 
 

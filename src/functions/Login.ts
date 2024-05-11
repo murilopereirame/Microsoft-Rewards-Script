@@ -38,7 +38,7 @@ export class Login {
                 const isLocked = await page.waitForSelector('.serviceAbusePageContainer', { state: 'visible', timeout: 1000 }).then(() => true).catch(() => false)
                 if (isLocked) {
                     this.bot.log('LOGIN', 'This account has been locked!', 'error')
-                    throw new Error('Account has been locked!')
+                    return {status: false, reason: 'LOCKED'}
                 }
 
                 await this.execLogin(page, email, password)
@@ -58,8 +58,11 @@ export class Login {
 
         } catch (error) {
             // Throw and don't continue
-            throw this.bot.log('LOGIN', 'An error occurred:' + error, 'error')
+            this.bot.log('LOGIN', 'An error occurred:' + error, 'error')
+            return {status: false, reason: 'GENERIC'}
         }
+
+        return {status: true, reason: ''}
     }
 
     private async execLogin(page: Page, email: string, password: string) {
@@ -140,17 +143,17 @@ export class Login {
     private async authSMSVerification(page: Page) {
         this.bot.log('LOGIN', 'SMS 2FA code required. Waiting for user input...')
 
-        const code = await new Promise<string>((resolve) => {
-            rl.question('Enter 2FA code:\n', (input) => {
-                rl.close()
-                resolve(input)
-            })
-        })
+                const code = await new Promise<string>((resolve) => {
+                    rl.question('Enter 2FA code:\n', (input) => {
+                        rl.close()
+                        resolve(input)
+                    })
+                })
 
         await page.fill('input[name="otc"]', code)
         await page.keyboard.press('Enter')
         this.bot.log('LOGIN', '2FA code entered successfully')
-    }
+            }
 
     private async checkLoggedIn(page: Page) {
         const targetHostname = 'rewards.bing.com'
