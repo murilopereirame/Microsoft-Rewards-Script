@@ -12,6 +12,7 @@ export interface Config {
   postSuccess: string;
   postFail: string;
   maxLoginRetries: number;
+  logFile: string;
 }
 
 export interface SearchSettings {
