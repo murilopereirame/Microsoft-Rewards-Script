@@ -20,7 +20,9 @@ export interface ConfigSaveFingerprint {
     mobile: boolean;
     desktop: boolean;
     saveFingerprint: boolean;
-    postActions: string;
+    postSuccess: string;
+    postFail: string;
+    maxLoginRetries: number;
 }
 
 export interface ConfigSearchSettings {

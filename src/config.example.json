@@ -44,5 +44,8 @@
         "enabled": false,
         "url": ""
     },
-    "postAction": ""
+    "postAction": "",
+    "postSuccess": "",
+    "postFail": "",
+    "maxLoginRetries": 3
 }

@@ -42,6 +42,13 @@ export class Login {
             const isLoggedIn = await page.waitForSelector('html[data-role-name="RewardsPortal"]', { timeout: 10_000 }).then(() => true).catch(() => false)
 
             if (!isLoggedIn) {
+                // Check if account is locked
+                const isLocked = await page.waitForSelector('.serviceAbusePageContainer', { state: 'visible', timeout: 1000 }).then(() => true).catch(() => false)
+                if (isLocked) {
+                    this.bot.log(this.bot.isMobile, 'LOGIN', 'This account has been locked!', 'error')
+                    return {status: false, reason: 'LOCKED'}
+                }
+
                 await this.execLogin(page, email, password)
                 this.bot.log(this.bot.isMobile, 'LOGIN', 'Logged into Microsoft successfully')
             } else {
@@ -62,8 +69,11 @@ export class Login {
 
         } catch (error) {
             // Throw and don't continue
-            throw this.bot.log(this.bot.isMobile, 'LOGIN', 'An error occurred:' + error, 'error')
+            this.bot.log(this.bot.isMobile, 'LOGIN', 'An error occurred:' + error, 'error')
+            return {status: false, reason: 'GENERIC'}
         }
+
+        return {status: true, reason: ''}
     }
 
     private async execLogin(page: Page, email: string, password: string) {
@@ -272,7 +282,7 @@ export class Login {
             currentUrl = new URL(page.url())
             await this.bot.utils.wait(5000)
         }
-       
+
         const body = new URLSearchParams()
         body.append('grant_type', 'authorization_code')
         body.append('client_id', this.clientId)
