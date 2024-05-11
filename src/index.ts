@@ -18,6 +18,7 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import Axios from './util/Axios'
 import cron from 'node-cron'
+import { Config } from './interface/Config'
 
 // Main bot class
 export class MicrosoftRewardsBot {
@@ -365,10 +366,18 @@ async function main() {
     }
 }
 
-if (process.env.BOT_CRON) {
-    cron.schedule(process.env.BOT_CRON, () => {
-        main().catch(error => {
-            log('main', 'MAIN-ERROR', `Error running bots: ${error}`, 'error')
-        })
-    });
+const runBot = (config: Config) => {
+    main().catch(error => {
+        log('main', 'MAIN-ERROR', `Error running bots: ${error}`, 'error')
+    })
+}
+
+const config = loadConfig()
+
+if (config.cronExpr) {
+    cron.schedule(config.cronExpr, () => {
+        runBot(config)
+    })
+} else {
+    runBot(config)
 }
