@@ -31,5 +31,6 @@
     },
     "postSuccess": "",
     "postFail": "",
-    "maxLoginRetries": 3
+    "maxLoginRetries": 3,
+    "logFile": ""
 }

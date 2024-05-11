@@ -16,6 +16,7 @@ import Activities from './functions/Activities'
 import {Account} from './interface/Account'
 import {exec} from 'child_process'
 import {promisify} from 'util'
+import cron from 'node-cron'
 
 // Main bot class
 export class MicrosoftRewardsBot {
@@ -315,10 +316,12 @@ export class MicrosoftRewardsBot {
     }
 }
 
-
-const bot = new MicrosoftRewardsBot()
-
-// Initialize accounts first and then start the bot
-bot.initialize().then(() => {
-    bot.run()
-})
+if (process.env.BOT_CRON) {
+  cron.schedule(process.env.BOT_CRON, () => {
+    const bot = new MicrosoftRewardsBot();
+    // Initialize accounts first and then start the bot
+    bot.initialize().then(() => {
+      bot.run();
+    });
+  });
+}
