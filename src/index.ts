@@ -272,6 +272,7 @@ export class MicrosoftRewardsBot {
     }
 
   private async runPostAction(email: string) {
+    log("MAIN-WORKER", `Running post action for ${email}`);
     if (this.config.postActions) {
       const runner = promisify(exec);
       runner(
@@ -280,7 +281,9 @@ export class MicrosoftRewardsBot {
           .replace("{earnablePoints}", this.earnablePoints.toString())
           .replace("{email}", email)
       );
+      return log("MAIN-WORKER", `Post action runned for ${email}`);
     }
+    return log("MAIN-WORKER", `Post action failed for ${email}`);
   }
 }
 
