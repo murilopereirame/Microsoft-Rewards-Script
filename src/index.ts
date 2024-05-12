@@ -32,13 +32,14 @@ export class MicrosoftRewardsBot {
     public isMobile: boolean = false
     public homePage!: Page
 
-    private collectedPoints: number = 0
+  private collectedPoints: number = 0
     private activeWorkers: number
-    private earnablePoints: number = 0
-    private browserFactory: Browser = new Browser(this)
-    private accounts: Account[]
-    private workers: Workers
-    private login = new Login(this)
+  private earnablePoints: number = 0
+  private availablePoints: number = 0
+  private browserFactory: Browser = new Browser(this)
+  private accounts: Account[]
+  private workers: Workers
+  private login = new Login(this)
     private accessToken: string = ''
 
   constructor(config: Config) {
@@ -167,6 +168,7 @@ export class MicrosoftRewardsBot {
         const earnablePoints = browserEnarablePoints + appEarnablePoints
         this.collectedPoints = earnablePoints
         this.earnablePoints = earnablePoints
+        this.availablePoints = data.userStatus.availablePoints
         log('MAIN-POINTS', `You can earn ${earnablePoints} points today (Browser: ${browserEnarablePoints} points, App: ${appEarnablePoints} points)`)
 
         // If runOnZeroPoints is false and 0 points to earn, don't continue
@@ -295,6 +297,10 @@ export class MicrosoftRewardsBot {
                 this.config.postSuccess
                     .replace('{collected}', this.collectedPoints.toString())
                     .replace('{earnablePoints}', this.earnablePoints.toString())
+                    .replace('{initialBalance}', this.availablePoints.toString())
+                    .replace('{newBalance}',
+                      (this.availablePoints + this.collectedPoints).toString()
+                    )
                     .replace('{email}', email)
             )
             log('POST-SUCCESS', `Post success action runned for ${email}`)
@@ -325,10 +331,23 @@ const runBot = (config: Config) => {
   })
 }
 
+const randomMs = (min: number, max: number) => {
+  return Math.floor(Math.random() * (max - min + 1) + min)
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 const config = loadConfig()
 
 if (config.cronExpr) {
-  cron.schedule(config.cronExpr, () => {
+  cron.schedule(config.cronExpr, async () => {
+    const timeToSleep = randomMs(
+      config.minimumWaitTime,
+      config.maximumWaitTime
+    )
+
+    await sleep(timeToSleep)
+
     runBot(config)
   })
 } else {
