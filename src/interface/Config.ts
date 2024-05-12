@@ -25,6 +25,8 @@ export interface ConfigSaveFingerprint {
     maxLoginRetries: number;
     logFile: string;
     cronExpr: string;
+    minimumWaitTime: number;
+    maximumWaitTime: number;
 }
 
 export interface ConfigSearchSettings {
