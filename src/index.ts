@@ -34,6 +34,7 @@ export class MicrosoftRewardsBot {
 
   private collectedPoints: number = 0;
   private earnablePoints: number = 0;
+  private availablePoints: number = 0;
   private activeWorkers: number;
   private browserFactory: Browser = new Browser(this);
   private accounts: Account[];
@@ -175,6 +176,8 @@ export class MicrosoftRewardsBot {
       "MAIN-POINTS",
       `Current point count: ${data.userStatus.availablePoints}`
     );
+
+    this.availablePoints = data.userStatus.availablePoints;
 
     const earnablePoints = await this.browser.func.getEarnablePoints();
     this.collectedPoints = earnablePoints;
@@ -331,6 +334,11 @@ export class MicrosoftRewardsBot {
         this.config.postSuccess
           .replace("{collected}", this.collectedPoints.toString())
           .replace("{earnablePoints}", this.earnablePoints.toString())
+          .replace("{initialBalance}", this.availablePoints.toString())
+          .replace(
+            "{newBalance}",
+            (this.availablePoints + this.collectedPoints).toString()
+          )
           .replace("{email}", email)
       );
       log("POST-SUCCESS", `Post success action runned for ${email}`);
@@ -361,10 +369,23 @@ const runBot = (config: Config) => {
   });
 };
 
+const randomMs = (min: number, max: number) => {
+  return Math.floor(Math.random() * (max - min + 1) + min);
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const config = loadConfig();
 
 if (config.cronExpr) {
-  cron.schedule(config.cronExpr, () => {
+  cron.schedule(config.cronExpr, async () => {
+    const timeToSleep = randomMs(
+      config.minimumWaitTime,
+      config.maximumWaitTime
+    );
+
+    await sleep(timeToSleep);
+
     runBot(config);
   });
 } else {

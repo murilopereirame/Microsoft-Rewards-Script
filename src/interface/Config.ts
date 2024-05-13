@@ -14,6 +14,8 @@ export interface Config {
   maxLoginRetries: number;
   logFile: string;
   cronExpr: string;
+  minimumWaitTime: number;
+  maximumWaitTime: number;
 }
 
 export interface SearchSettings {
