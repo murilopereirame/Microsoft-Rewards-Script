@@ -18,7 +18,7 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import Axios from './util/Axios'
 import cron from 'node-cron'
-import { Config } from './interface/Config'
+import {Config} from './interface/Config'
 
 // Main bot class
 export class MicrosoftRewardsBot {
@@ -35,7 +35,6 @@ export class MicrosoftRewardsBot {
 
     private pointsCanCollect: number = 0
     private pointsInitial: number = 0
-
     private activeWorkers: number
     private collectedPoints: number = 0
     private earnablePoints: number = 0
@@ -213,22 +212,38 @@ export class MicrosoftRewardsBot {
 
         // Complete daily set
         if (this.config.workers.doDailySet) {
-            await this.workers.doDailySet(workerPage, data)
+            try {
+                await this.workers.doDailySet(workerPage, data)
+            } catch (e) {
+                log('main', 'MAIN', `Failed to complete daily set ${e}`)
+            }
         }
 
         // Complete more promotions
         if (this.config.workers.doMorePromotions) {
-            await this.workers.doMorePromotions(workerPage, data)
+            try {
+                await this.workers.doMorePromotions(workerPage, data)
+            } catch (e) {
+                log('main', 'MAIN', `Failed to complete do more ${e}`)
+            }
         }
 
         // Complete punch cards
         if (this.config.workers.doPunchCards) {
-            await this.workers.doPunchCard(workerPage, data)
+            try {
+                await this.workers.doPunchCard(workerPage, data)
+            } catch (e) {
+                log('main', 'MAIN', `Failed to complete punch cards ${e}`)
+            }
         }
 
         // Do desktop searches
         if (this.config.workers.doDesktopSearch) {
-            await this.activities.doSearch(workerPage, data)
+            try {
+                await this.activities.doSearch(workerPage, data)
+            } catch (e) {
+                log('main', 'MAIN', `Failed to complete desktop search ${e}`)
+            }
         }
 
         // Save cookies
@@ -272,12 +287,20 @@ export class MicrosoftRewardsBot {
 
         // Do daily check in
         if (this.config.workers.doDailyCheckIn) {
-            await this.activities.doDailyCheckIn(this.accessToken, data)
+            try {
+                await this.activities.doDailyCheckIn(this.accessToken, data)
+            } catch (e) {
+                log('main', 'MAIN', `Failed to complete daily check in ${e}`)
+            }
         }
 
         // Do read to earn
         if (this.config.workers.doReadToEarn) {
-            await this.activities.doReadToEarn(this.accessToken, data)
+            try {
+                await this.activities.doReadToEarn(this.accessToken, data)
+            } catch (e) {
+                log('main', 'MAIN', `Failed to complete read to earn ${e}`)
+            }
         }
 
         // Do mobile searches
@@ -290,41 +313,47 @@ export class MicrosoftRewardsBot {
                 // Go to homepage on worker page
                 await this.browser.func.goHome(workerPage)
 
-                await this.activities.doSearch(workerPage, data)
+                // Do mobile searches
+                if (this.config.workers.doMobileSearch) {
+                    try {
+                        await this.activities.doSearch(workerPage, data)
 
-                // Fetch current search points
-                const mobileSearchPoints = (await this.browser.func.getSearchPoints()).mobileSearch?.[0]
+                        // Fetch current search points
+                        const mobileSearchPoints = (await this.browser.func.getSearchPoints()).mobileSearch?.[0]
 
-                if (mobileSearchPoints && (mobileSearchPoints.pointProgressMax - mobileSearchPoints.pointProgress) > 0) {
-                    // Increment retry count
-                    this.mobileRetryAttempts++
+                        if (mobileSearchPoints && (mobileSearchPoints.pointProgressMax - mobileSearchPoints.pointProgress) > 0) {
+                            // Increment retry count
+                            this.mobileRetryAttempts++
+                        }
+
+                        // Exit if retries are exhausted
+                        if (this.mobileRetryAttempts > this.config.searchSettings.retryMobileSearchAmount) {
+                            log(this.isMobile, 'MAIN', `Max retry limit of ${this.config.searchSettings.retryMobileSearchAmount} reached. Exiting retry loop`, 'warn')
+                        } else if (this.mobileRetryAttempts !== 0) {
+                            log(this.isMobile, 'MAIN', `Attempt ${this.mobileRetryAttempts}/${this.config.searchSettings.retryMobileSearchAmount}: Unable to complete mobile searches, bad User-Agent? Increase search delay? Retrying...`, 'log', 'yellow')
+
+                            // Close mobile browser
+                            await this.browser.func.closeBrowser(browser, account.email)
+
+                            // Retry
+                            await this.Mobile(account)
+                        }
+                    } catch (e) {
+                        log('main', 'MAIN', `Failed to complete mobile search ${e}`)
+                    }
+                } else {
+                    log(this.isMobile, 'MAIN', 'Unable to fetch search points, your account is most likely too "new" for this! Try again later!', 'warn')
                 }
-
-                // Exit if retries are exhausted
-                if (this.mobileRetryAttempts > this.config.searchSettings.retryMobileSearchAmount) {
-                    log(this.isMobile, 'MAIN', `Max retry limit of ${this.config.searchSettings.retryMobileSearchAmount} reached. Exiting retry loop`, 'warn')
-                } else if (this.mobileRetryAttempts !== 0) {
-                    log(this.isMobile, 'MAIN', `Attempt ${this.mobileRetryAttempts}/${this.config.searchSettings.retryMobileSearchAmount}: Unable to complete mobile searches, bad User-Agent? Increase search delay? Retrying...`, 'log', 'yellow')
-
-                    // Close mobile browser
-                    await this.browser.func.closeBrowser(browser, account.email)
-
-                    // Create a new browser and try
-                    await this.Mobile(account)
-                    return
-                }
-            } else {
-                log(this.isMobile, 'MAIN', 'Unable to fetch search points, your account is most likely too "new" for this! Try again later!', 'warn')
             }
+
+            const afterPointAmount = await this.browser.func.getCurrentPoints()
+
+            log(this.isMobile, 'MAIN-POINTS', `The script collected ${afterPointAmount - this.pointsInitial} points today`)
+
+            // Close mobile browser
+            await this.browser.func.closeBrowser(browser, account.email)
+            return
         }
-
-        const afterPointAmount = await this.browser.func.getCurrentPoints()
-
-        log(this.isMobile, 'MAIN-POINTS', `The script collected ${afterPointAmount - this.pointsInitial} points today`)
-
-        // Close mobile browser
-        await this.browser.func.closeBrowser(browser, account.email)
-        return
     }
 
     private async runPostSuccess(email: string) {
@@ -337,7 +366,7 @@ export class MicrosoftRewardsBot {
                     .replace('{earnablePoints}', this.earnablePoints.toString())
                     .replace('{initialBalance}', this.availablePoints.toString())
                     .replace('{newBalance}',
-                      (this.availablePoints + this.collectedPoints).toString()
+                        (this.availablePoints + this.collectedPoints).toString()
                     )
                     .replace('{email}', email)
             )
@@ -379,7 +408,7 @@ const runBot = (config: Config) => {
 }
 
 const randomMs = (min: number, max: number) => {
-  return Math.floor(Math.random() * (max - min + 1) + min)
+    return Math.floor(Math.random() * (max - min + 1) + min)
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -387,16 +416,17 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const config = loadConfig()
 
 if (config.cronExpr) {
-  cron.schedule(config.cronExpr, async () => {
-    const timeToSleep = randomMs(
-      config.minimumWaitTime,
-      config.maximumWaitTime
-    )
+    log('main', 'MAIN', `Rewards collection scheduled according to ${config.cronExpr}`)
+    cron.schedule(config.cronExpr, async () => {
+        const timeToSleep = randomMs(
+            config.minimumWaitTime,
+            config.maximumWaitTime
+        )
 
-    await sleep(timeToSleep)
+        await sleep(timeToSleep)
 
-    runBot(config)
-  })
+        runBot(config)
+    })
 } else {
     runBot(config)
 }
