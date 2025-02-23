@@ -18,7 +18,6 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import Axios from './util/Axios'
 import cron from 'node-cron'
-import {Config} from './interface/Config'
 
 // Main bot class
 export class MicrosoftRewardsBot {
@@ -401,7 +400,7 @@ async function main() {
     }
 }
 
-const runBot = (config: Config) => {
+const runBot = () => {
     main().catch(error => {
         log('main', 'MAIN-ERROR', `Error running bots: ${error}`, 'error')
     })
@@ -423,10 +422,16 @@ if (config.cronExpr) {
             config.maximumWaitTime
         )
 
+        log('main', 'MAIN', `Sleeping ${timeToSleep} before running`)
+
         await sleep(timeToSleep)
 
-        runBot(config)
+        runBot()
     })
+
+    if (config.runOnStart) {
+        runBot()
+    }
 } else {
-    runBot(config)
+    runBot()
 }
