@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 
-import { Log2File } from "./Log2File";
+import { Log2File } from './Log2File'
 import { Webhook } from './Webhook'
 import { loadConfig } from './Load'
 
@@ -45,6 +45,6 @@ export function log(isMobile: boolean | 'main', title: string, message: string, 
     }
 
     if (str) {
-        Log2File(str);
+        Log2File(str)
     }
 }

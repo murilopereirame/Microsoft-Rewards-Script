@@ -9,9 +9,11 @@ export interface Config {
   workers: ConfigWorkers;
   searchOnBingLocalQueries: boolean;
   globalTimeout: number | string;
-  searchSettings: SearchSettings;
+  searchSettings: ConfigSearchSettings;
   logExcludeFunc: string[];
-  webhooklogExcludeFunc: string[];
+  webhookLogExcludeFunc: string[];
+  proxy: ConfigProxy;
+  webhook: ConfigWebhook;
   postSuccess: string;
   postFail: string;
   maxLoginRetries: number;
@@ -19,15 +21,15 @@ export interface Config {
   cronExpr: string;
   minimumWaitTime: number;
   maximumWaitTime: number;
+  runOnStart: boolean;
 }
 
 export interface ConfigSaveFingerprint {
   mobile: boolean;
   desktop: boolean;
-  saveFingerprint: boolean;
 }
 
-export interface SearchSettings {
+export interface ConfigSearchSettings {
   useGeoLocaleQueries: boolean;
   scrollRandomResults: boolean;
   clickRandomResults: boolean;
