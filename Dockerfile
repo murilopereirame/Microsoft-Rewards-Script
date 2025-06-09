@@ -18,7 +18,12 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
     tzdata \
     wget \
+    x11vnc \
+    xvfb \
+    fluxbox \
     && rm -rf /var/lib/apt/lists/*
+
+ENV DISPLAY=:99
 
 # Copy all files to the working directory
 COPY . .
@@ -29,19 +34,17 @@ RUN npm install && \
     npm run pre-build && \
     npm run build
 
+RUN npx playwright install firefox
+
 # Copy cron file to cron directory
 COPY src/crontab.template /etc/cron.d/microsoft-rewards-cron.template
 
 # Create the log file to be able to run tail
 RUN touch /var/log/cron.log
 
+EXPOSE 5900
+
 # Define the command to run your application with cron optionally
-CMD ["sh", "-c", "echo \"$TZ\" > /etc/timezone && \
-    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
-    dpkg-reconfigure -f noninteractive tzdata && \
-    envsubst < /etc/cron.d/microsoft-rewards-cron.template > /etc/cron.d/microsoft-rewards-cron && \
-    chmod 0644 /etc/cron.d/microsoft-rewards-cron && \
-    crontab /etc/cron.d/microsoft-rewards-cron && \
-    cron -f & \
-    ([ \"$RUN_ON_START\" = \"true\" ] && npm start) && \
-    tail -f /var/log/cron.log"]
+
+RUN chmod +x entrypoint.sh
+CMD ["sh", "entrypoint.sh"]
