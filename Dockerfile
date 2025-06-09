@@ -36,7 +36,7 @@ WORKDIR /usr/src/microsoft-rewards-script
 # Install cron, gettext-base (for envsubst), tzdata noninteractively
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-         cron gettext-base tzdata \
+         cron gettext-base tzdata x11vnc xvfb fluxbox \
     && rm -rf /var/lib/apt/lists/*
 
 # Ensure Playwright uses preinstalled browsers
@@ -62,6 +62,9 @@ COPY --chmod=755 entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Default TZ (overridden by user via environment)
 ENV TZ=UTC
+
+ENV DISPLAY=:99
+EXPOSE 5900
 
 # Entrypoint handles TZ, initial run toggle, cron templating & launch
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -46,5 +46,13 @@ crontab /etc/cron.d/microsoft-rewards-cron
 
 echo "[entrypoint] Cron configured with schedule: $CRON_SCHEDULE and timezone: $TZ; starting cron at $(date)"
 
+Xvfb :99 -screen 0 1280x720x16 &
+export DISPLAY=:99
+sleep 2
+
+fluxbox &
+
+x11vnc -display :99 -nopw -forever &
+
 # 5. Start cron in foreground (PID 1)
 exec cron -f
