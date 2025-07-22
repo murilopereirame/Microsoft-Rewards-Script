@@ -17,6 +17,10 @@ if [ -z "${CRON_SCHEDULE:-}" ]; then
   exit 1
 fi
 
+Xvfb :99 -screen 0 1280x720x16 &
+export DISPLAY=:99
+sleep 10 # Allow Xvfb to start
+
 # 3. Initial run without sleep if RUN_ON_START=true
 if [ "${RUN_ON_START:-false}" = "true" ]; then
   echo "[entrypoint] Starting initial run in background at $(date)"
@@ -45,10 +49,6 @@ chmod 0644 /etc/cron.d/microsoft-rewards-cron
 crontab /etc/cron.d/microsoft-rewards-cron
 
 echo "[entrypoint] Cron configured with schedule: $CRON_SCHEDULE and timezone: $TZ; starting cron at $(date)"
-
-Xvfb :99 -screen 0 1280x720x16 &
-export DISPLAY=:99
-sleep 2
 
 fluxbox &
 
